@@ -1,4 +1,4 @@
-export const CLIENT_ID    = "d038047824f04478846d4f0c86df161f";
+export const CLIENT_ID    = "82921638d58f49368a3a3ff7af89da59";
 export const REDIRECT_URI = "http://127.0.0.1:5173/callback";
 export const SCOPES = [
   "playlist-read-private",
@@ -8,6 +8,18 @@ export const SCOPES = [
   "user-read-private",
   "user-read-email",
 ].join(" ");
+
+// ── JWT decode (best-effort — Spotify tokens may or may not be JWTs) ────────
+
+function tryDecodeJWT(token) {
+  try {
+    const part = token.split(".")[1];
+    if (!part) return null;
+    return JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/")));
+  } catch {
+    return null;
+  }
+}
 
 // ── PKCE ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +49,7 @@ export async function redirectToSpotify() {
     redirect_uri:          REDIRECT_URI,
     code_challenge_method: "S256",
     code_challenge:        challenge,
+    show_dialog:           "true",
   });
 
   window.location.href = `https://accounts.spotify.com/authorize?${params}`;
@@ -65,6 +78,10 @@ export async function exchangeCodeForToken(code) {
 
   const data = await res.json();
   if (!data.access_token) throw new Error("Réponse Spotify invalide (access_token manquant)");
+
+  console.log("[auth] Scopes accordés par Spotify:", data.scope);
+  const decoded = tryDecodeJWT(data.access_token);
+  if (decoded) console.log("[auth] Token JWT décodé:", decoded);
 
   localStorage.setItem("spotify_token",   data.access_token);
   localStorage.setItem("spotify_refresh",  data.refresh_token);

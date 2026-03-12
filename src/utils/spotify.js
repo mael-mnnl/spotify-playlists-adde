@@ -53,7 +53,10 @@ async function apiFetch(urlOrPath, options = {}) {
 
   // 403 → pas de logout, juste une erreur sur cette ressource
   if (res.status === 403) {
-    throw new Error("Contenu inaccessible (403) — playlist privée ou restreinte");
+    let body = {};
+    try { body = await res.json(); } catch {}
+    console.error("[spotify] 403 Forbidden:", url, body);
+    throw new Error("Erreur 403 : scope manquant ou contenu restreint par Spotify");
   }
 
   const json = await res.json();
@@ -81,11 +84,13 @@ export async function getAllPlaylists() {
 
 export async function getPlaylistTracks(playlistId) {
   let items = [];
-  let url   = `${BASE}/playlists/${playlistId}/tracks?limit=100`;
+  let url   = `${BASE}/playlists/${playlistId}/items?limit=100`;
   let page  = 0;
   while (url && page < 50) {
     const data  = await apiFetch(url);
-    const valid = (data.items || []).filter(i => i?.track?.id);
+    const valid = (data.items || [])
+      .filter(i => i?.item?.id)
+      .map(i => ({ ...i, track: i.item })); // normalise: item → track pour compat
     items = [...items, ...valid];
     url   = data.next || null;
     page++;
@@ -101,14 +106,14 @@ export const searchTracks = (q) =>
 export const addTrackToPlaylist = (playlistId, trackUri, position) => {
   const body = { uris: [trackUri] };
   if (position !== undefined && position !== null) body.position = position;
-  return apiFetch(`/playlists/${playlistId}/tracks`, {
+  return apiFetch(`/playlists/${playlistId}/items`, {
     method: "POST",
     body:   JSON.stringify(body),
   });
 };
 
 export const removeTrackFromPlaylist = (playlistId, trackUri) =>
-  apiFetch(`/playlists/${playlistId}/tracks`, {
+  apiFetch(`/playlists/${playlistId}/items`, {
     method: "DELETE",
     body:   JSON.stringify({ tracks: [{ uri: trackUri }] }),
   });

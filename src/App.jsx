@@ -3,6 +3,7 @@ import { exchangeCodeForToken, getValidToken, logout } from "./utils/auth";
 import { getMe } from "./utils/spotify";
 import Login from "./pages/Login";
 import Main from "./pages/Main";
+import DebugPage from "./pages/DebugPage";
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -85,6 +86,7 @@ export default function App() {
     </div>
   );
 
+  if (window.location.pathname === "/debug") return <ErrorBoundary><DebugPage /></ErrorBoundary>;
   if (!token) return <ErrorBoundary><Login /></ErrorBoundary>;
   return <ErrorBoundary><Main user={user} onLogout={handleLogout} /></ErrorBoundary>;
 }

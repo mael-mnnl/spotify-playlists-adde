@@ -315,7 +315,7 @@ export default function BroadcastPage() {
                 }
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--faint)" }}>{pl.tracks?.total ?? "?"} tracks</div>
+                  <div style={{ fontSize: 11, color: "var(--faint)" }}>{pl.tracks?.total ?? pl.items?.total ?? "?"} tracks</div>
                 </div>
               </label>
             ))
