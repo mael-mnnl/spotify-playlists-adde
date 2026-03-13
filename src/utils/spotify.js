@@ -2,6 +2,12 @@ import { getValidToken, refreshAccessToken } from "./auth";
 
 const BASE = "https://api.spotify.com/v1";
 
+// ── Cache playlists (5 min) ──────────────────────────────────────────────────
+let _playlistsCache = null;
+let _playlistsCacheAt = 0;
+const CACHE_TTL = 5 * 60 * 1000;
+export function invalidatePlaylistsCache() { _playlistsCache = null; }
+
 // ── Central fetch with auto-retry on 401 ────────────────────────────────────
 
 async function apiFetch(urlOrPath, options = {}) {
@@ -51,6 +57,12 @@ async function apiFetch(urlOrPath, options = {}) {
 
   if (res.status === 204) return null;
 
+  // 429 → rate limit (corps peut être du texte brut, pas du JSON)
+  if (res.status === 429) {
+    const retry = res.headers.get("Retry-After");
+    throw new Error(`Trop de requêtes Spotify${retry ? ` — réessaie dans ${retry}s` : ""}`);
+  }
+
   // 403 → pas de logout, juste une erreur sur cette ressource
   if (res.status === 403) {
     let body = {};
@@ -59,7 +71,9 @@ async function apiFetch(urlOrPath, options = {}) {
     throw new Error("Erreur 403 : scope manquant ou contenu restreint par Spotify");
   }
 
-  const json = await res.json();
+  let json;
+  try { json = await res.json(); }
+  catch { throw new Error(`Réponse Spotify invalide (${res.status})`); }
   if (res.status === 400) console.error("[spotify] 400:", url, json);
   if (!res.ok) throw new Error(json?.error?.message || `Erreur Spotify ${res.status}`);
   return json;
@@ -70,6 +84,7 @@ async function apiFetch(urlOrPath, options = {}) {
 export const getMe = () => apiFetch("/me");
 
 export async function getAllPlaylists() {
+  if (_playlistsCache && Date.now() - _playlistsCacheAt < CACHE_TTL) return _playlistsCache;
   let items = [];
   let url   = `${BASE}/me/playlists?limit=50`;
   let page  = 0;
@@ -79,6 +94,8 @@ export async function getAllPlaylists() {
     url   = data.next || null;
     page++;
   }
+  _playlistsCache  = items;
+  _playlistsCacheAt = Date.now();
   return items;
 }
 

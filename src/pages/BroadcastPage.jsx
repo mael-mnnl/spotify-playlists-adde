@@ -105,6 +105,7 @@ export default function BroadcastPage() {
         failed++;
       }
       setProgress({ done: ok + failed, total: ids.length });
+      await new Promise(r => setTimeout(r, 300));
     }
 
     const verb = mode === "add" ? "Ajouté à" : "Supprimé de";
